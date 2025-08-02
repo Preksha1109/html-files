@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6 DoF Robotic Arm Control</title>
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+      color: white;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+    }
+    #controls {
+      margin: 20px;
+      background: rgba(255,255,255,0.05);
+      padding: 15px;
+      border-radius: 15px;
+      backdrop-filter: blur(5px);
+    }
+    .slider {
+      margin: 10px 0;
+    }
+    canvas {
+      border: 1px solid white;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+  <h1>Robotic Arm Joint Control</h1>
+  <div id="controls"></div>
+  <canvas id="scene" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const numJoints = 5;
+    const jointAngles = new Array(numJoints).fill(0);
+
+    const controls = document.getElementById("controls");
+    for (let i = 0; i < numJoints; i++) {
+      const label = document.createElement("label");
+      label.innerText = `Joint ${i + 1}: `;
+      const slider = document.createElement("input");
+      slider.type = "range";
+      slider.min = -90;
+      slider.max = 90;
+      slider.value = 0;
+      slider.className = "slider";
+      slider.oninput = (e) => {
+        jointAngles[i] = parseFloat(e.target.value);
+        drawArm();
+      };
+      controls.appendChild(label);
+      controls.appendChild(slider);
+      controls.appendChild(document.createElement("br"));
+    }
+
+    // Star field background dots
+    const stars = [];
+    const starCount = 150;
+    for (let i = 0; i < starCount; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.2 + 0.3
+      });
+    }
+
+    function drawStars() {
+      ctx.fillStyle = "white";
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.r, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
+    function drawArm() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawStars();
+
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+
+      let x = 0, y = 0;
+      let totalAngle = 0;
+      const segmentLength = 60;
+
+      const positions = [];
+
+      for (let i = 0; i < numJoints; i++) {
+        totalAngle += jointAngles[i] * Math.PI / 180;
+        const dx = segmentLength * Math.cos(totalAngle);
+        const dy = segmentLength * Math.sin(totalAngle);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + dx, y + dy);
+        ctx.strokeStyle = `hsl(${i * 60}, 100%, 70%)`;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.fillStyle = `hsl(${i * 60}, 100%, 50%)`;
+        ctx.arc(x, y, 7, 0, 2 * Math.PI);
+        ctx.fill();
+
+        x += dx;
+        y += dy;
+        positions.push({ x, y });
+      }
+
+      ctx.beginPath();
+      ctx.fillStyle = "red";
+      ctx.arc(x, y, 9, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.restore();
+
+      let Tx = 0, Ty = 0;
+      for(let i = 0; i < numJoints; i++){
+        Tx += 0.02 * jointAngles[i] * Math.cos(i);
+        Ty += 0.02 * jointAngles[i] * Math.sin(i);
+      }
+
+      let comX = 0, comY = 0;
+      positions.forEach(pos => {
+        comX += pos.x;
+        comY += pos.y;
+      });
+      comX /= positions.length;
+      comY /= positions.length;
+
+      const pxToM = 0.01;
+      comX *= pxToM;
+      comY *= pxToM;
+
+      ctx.fillStyle = "white";
+      ctx.font = "18px monospace";
+      ctx.fillText(`Base Reaction Torques (Nm): Tx=${Tx.toFixed(2)} Ty=${Ty.toFixed(2)}`, 10, 25);
+      ctx.fillText(`COM Coordinates (m): X=${comX.toFixed(2)} Y=${comY.toFixed(2)}`, 10, 50);
+    }
+
+    drawArm();
+  </script>
+</body>
+</html>

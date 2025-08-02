@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centroid Locator</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background-color: black;
+      color: white;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">Click on an object to get its centroid coordinates</div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Starry background
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 1000;
+    const starVertices = [];
+    for (let i = 0; i < starCount; i++) {
+      starVertices.push((Math.random() - 0.5) * 2000);
+      starVertices.push((Math.random() - 0.5) * 2000);
+      starVertices.push((Math.random() - 0.5) * 2000);
+    }
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+    const starField = new THREE.Points(starGeometry, starMaterial);
+    scene.add(starField);
+
+    const light = new THREE.PointLight(0xffffff, 1.2, 100);
+    light.position.set(10, 10, 10);
+    scene.add(light);
+
+    const ambientLight = new THREE.AmbientLight(0x808080);
+    scene.add(ambientLight);
+
+    const objects = [];
+    const colors = [0xffff00, 0xff00ff, 0x00ffff, 0xff6347, 0x00ff00]; // Brighter colors
+
+    for (let i = 0; i < 5; i++) {
+      const geometry = new THREE.SphereGeometry(1, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors[i % colors.length], emissive: colors[i % colors.length], emissiveIntensity: 0.5 });
+      const sphere = new THREE.Mesh(geometry, material);
+      sphere.position.set(
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20
+      );
+      scene.add(sphere);
+      objects.push(sphere);
+    }
+
+    // Load ISS Model (Simple placeholder cube)
+    const issGeometry = new THREE.BoxGeometry(4, 2, 2);
+    const issMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+    const iss = new THREE.Mesh(issGeometry, issMaterial);
+    iss.position.set(-10, 5, -20);
+    scene.add(iss);
+
+    // XYZ Reference Axis
+    const axisLength = 4;
+    const xAxis = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(-10, -10, -10), axisLength, 0xff0000);
+    const yAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(-10, -10, -10), axisLength, 0x00ff00);
+    const zAxis = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(-10, -10, -10), axisLength, 0x0000ff);
+    scene.add(xAxis);
+    scene.add(yAxis);
+    scene.add(zAxis);
+
+    camera.position.z = 30;
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const info = document.getElementById("info");
+
+    function onMouseClick(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(objects);
+
+      if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        const pos = obj.position;
+        info.textContent = `Centroid: X=${pos.x.toFixed(2)} Y=${pos.y.toFixed(2)} Z=${pos.z.toFixed(2)}`;
+      }
+    }
+
+    window.addEventListener('click', onMouseClick);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      scene.rotation.y += 0.0015;
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
